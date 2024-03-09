@@ -1,7 +1,8 @@
-package com.atifimal.demo.couriertrack.service;
+package com.atifimal.demo.couriertrack.domain.courier_track.service;
 
-import com.atifimal.demo.couriertrack.model.MarketStore;
-import com.atifimal.demo.couriertrack.repository.CourierTrackRepository;
+import com.atifimal.demo.couriertrack.common.model.MarketStore;
+import com.atifimal.demo.couriertrack.domain.courier_track.entity.CourierTrack;
+import com.atifimal.demo.couriertrack.domain.courier_track.repository.CourierTrackRepository;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -16,8 +17,12 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class CourierTrackService {
-    //private final CourierTrackRepository courierTrackRepository;
+    private final CourierTrackRepository repository;
     private final ResourceLoader resourceLoader;
+
+    public List<CourierTrack> getCourierTracks() {
+        return repository.findAll();
+    }
 
     public List<MarketStore> getMarketStores() throws IOException {
         Resource resource = resourceLoader.getResource("classpath:store.json");
