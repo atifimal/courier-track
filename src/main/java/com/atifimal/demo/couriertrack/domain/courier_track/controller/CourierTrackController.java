@@ -1,14 +1,29 @@
 package com.atifimal.demo.couriertrack.domain.courier_track.controller;
 
+import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackRequest;
+import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackResponse;
 import com.atifimal.demo.couriertrack.domain.courier_track.service.CourierTrackService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.util.List;
 
 @RestController
-@RequestMapping("courier")
+@RequestMapping("courier-track")
 @RequiredArgsConstructor
 public class CourierTrackController {
     private final CourierTrackService service;
 
+    @GetMapping
+    private ResponseEntity<List<CourierTrackResponse>> getCourierTracks() throws IOException {
+        return service.getCourierTracks();
+    }
+
+    @PostMapping
+    private ResponseEntity<CourierTrackResponse> saveCourierTrack(@RequestBody @Valid CourierTrackRequest request) throws IOException {
+        return service.saveCourierTrack(request);
+    }
 }
