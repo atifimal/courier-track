@@ -1,16 +1,11 @@
 package com.atifimal.demo.couriertrack.common.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
-import java.math.BigDecimal;
-
-@Data
+@Getter
+@Setter
 @Builder
 @AllArgsConstructor
-public class MarketStore {
+public class MarketStore extends LatLng {
     private String name;
-    private BigDecimal lat;
-    private BigDecimal lng;
 }

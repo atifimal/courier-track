@@ -1,4 +1,4 @@
-package com.atifimal.demo.couriertrack.domain.courier_track.model;
+package com.atifimal.demo.couriertrack.common.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +10,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LatLng {
-    private BigDecimal lat;
-    private BigDecimal lng;
+    private Double lat;
+    private Double lng;
 }

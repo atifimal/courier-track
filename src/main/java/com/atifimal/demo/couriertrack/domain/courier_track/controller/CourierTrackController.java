@@ -22,6 +22,11 @@ public class CourierTrackController {
         return service.getCourierTracks();
     }
 
+    @GetMapping("total-distance/{courierId}")
+    private ResponseEntity<Double> getTotalTravelDistance(@PathVariable Long courierId) throws IOException {
+        return service.getTotalTravelDistance(courierId);
+    }
+
     @PostMapping
     private ResponseEntity<CourierTrackResponse> saveCourierTrack(@RequestBody @Valid CourierTrackRequest request) throws IOException {
         return service.saveCourierTrack(request);

@@ -14,7 +14,7 @@ public class CourierTrackRequest {
     @NotNull(message = "courier_id_must_not_be_null")
     private Long courierId;
     @NotNull(message = "latitude_must_not_be_null")
-    private BigDecimal lat;
+    private Double lat;
     @NotNull(message = "longitude_must_not_be_null")
-    private BigDecimal lng;
+    private Double lng;
 }

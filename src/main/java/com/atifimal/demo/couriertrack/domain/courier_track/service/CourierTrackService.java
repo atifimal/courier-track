@@ -3,7 +3,7 @@ package com.atifimal.demo.couriertrack.domain.courier_track.service;
 import com.atifimal.demo.couriertrack.common.model.MarketStore;
 import com.atifimal.demo.couriertrack.domain.courier.service.CourierService;
 import com.atifimal.demo.couriertrack.domain.courier_track.entity.CourierTrack;
-import com.atifimal.demo.couriertrack.domain.courier_track.model.LatLng;
+import com.atifimal.demo.couriertrack.common.model.LatLng;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackRequest;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackResponse;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.enums.StatusEnum;
@@ -11,6 +11,8 @@ import com.atifimal.demo.couriertrack.domain.courier_track.repository.CourierTra
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
 import org.springframework.core.io.Resource;
@@ -22,35 +24,21 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CourierTrackService {
     private final CourierTrackRepository repository;
     private final ResourceLoader resourceLoader;
     private final ModelMapper mapper;
     private final CourierService courierService;
-
-    public static boolean isCoordsDiffLessThan(LatLng latLng1, LatLng latLng2, double distance) {
-        int EARTH_RADIUS_KM = 6371;
-        double lat1 = latLng1.getLat().doubleValue();
-        double lat2 = latLng2.getLat().doubleValue();
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(latLng2.getLng().doubleValue() - latLng1.getLng().doubleValue());
-
-        lat1 = Math.toRadians(lat1);
-        lat2 = Math.toRadians(lat2);
-
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return EARTH_RADIUS_KM * c * 1000 <= distance;
-    }
 
     @PostConstruct
     private void init() {
@@ -83,17 +71,33 @@ public class CourierTrackService {
         }
 
         var courierTrack = mapper.map(request, CourierTrack.class);
+        var courierLastRecord = repository.findFirstByCourierIdOrderByIdDesc(request.getCourierId())
+                .map(courierTrack1 -> mapper.map(courierTrack1, LatLng.class))
+                .orElse(null);
+
         courierTrack.setCourier(courierService.getCourierById(request.getCourierId()));
+        Optional.ofNullable(courierLastRecord).ifPresent(latLng -> courierTrack.setTravelDistance(coordinateDiffAsKm(latLng, requestLatLng)));
         Optional.ofNullable(enteredMarketStore).ifPresent(marketStore -> {
             courierTrack.setStatus(StatusEnum.INSIDE);
             courierTrack.setStoreLat(marketStore.getLat());
-            courierTrack.setLng(marketStore.getLng());
+            courierTrack.setStoreLng(marketStore.getLng());
             if (isLastEntranceBiggerThan(courierTrack, 1)) {
-                // LOG
+                var courier = courierTrack.getCourier();
+                log.info("COURIER ENTRANCE - Courier: {} (id: {}), Store: {}, Time: {}",
+                        courier.getFirstName().concat(StringUtils.SPACE).concat(courier.getLastName()).trim(),
+                        courier.getId(),
+                        marketStore.getName(),
+                        courierTrack.getTime());
             }
         });
 
         return new ResponseEntity<>(mapper.map(repository.save(courierTrack), CourierTrackResponse.class), HttpStatus.OK);
+    }
+
+    public ResponseEntity<Double> getTotalTravelDistance(Long courierId) {
+        var totalDist = repository.findAllByCourierId(courierId).stream().mapToDouble(CourierTrack::getTravelDistance).sum();
+
+        return new ResponseEntity<>(BigDecimal.valueOf(totalDist).setScale(2, RoundingMode.HALF_EVEN).doubleValue(), HttpStatus.OK);
     }
 
     public List<MarketStore> getMarketStores() throws IOException {
@@ -112,11 +116,32 @@ public class CourierTrackService {
     public boolean isLastEntranceBiggerThan(CourierTrack courierTrack, Integer minute) {
         var lastEntranceToStore = repository.findFirstByCourierIdAndStatusAndStoreLatAndStoreLngOrderByIdDesc(
                 courierTrack.getCourier().getId(),
-                courierTrack.getStatus(), courierTrack.getStoreLat(),
+                StatusEnum.INSIDE, courierTrack.getStoreLat(),
                 courierTrack.getStoreLng()
         ).orElse(null);
         if (lastEntranceToStore != null)
-            return minute > ChronoUnit.MINUTES.between(courierTrack.getTime(), lastEntranceToStore.getCreationDateTime());
-        return false;
+            return minute < Duration.between(courierTrack.getTime(), lastEntranceToStore.getTime()).toMinutes();
+        return true;
+    }
+
+    public static boolean isCoordsDiffLessThan(LatLng latLng1, LatLng latLng2, double distance) {
+        return coordinateDiffAsKm(latLng1, latLng2) <= distance / 1000;
+    }
+
+    public static double coordinateDiffAsKm(LatLng latLng1, LatLng latLng2) {
+        int EARTH_RADIUS_KM = 6371;
+        double lat1 = latLng1.getLat().doubleValue();
+        double lat2 = latLng2.getLat().doubleValue();
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(latLng2.getLng().doubleValue() - latLng1.getLng().doubleValue());
+
+        lat1 = Math.toRadians(lat1);
+        lat2 = Math.toRadians(lat2);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return EARTH_RADIUS_KM * c;
     }
 }

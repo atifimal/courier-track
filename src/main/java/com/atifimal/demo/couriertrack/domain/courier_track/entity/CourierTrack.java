@@ -23,12 +23,12 @@ public class CourierTrack extends BaseEntity {
     @DecimalMin(value = "-90.0")
     @DecimalMax(value = "90.0")
     @Column(name = "lat", columnDefinition = "decimal(10,7)")
-    private BigDecimal lat;
+    private Double lat;
 
     @DecimalMin(value = "-180.0")
     @DecimalMax(value = "180.0")
     @Column(name = "lng", columnDefinition = "decimal(10,7)")
-    private BigDecimal lng;
+    private Double lng;
 
     @Column(name = "record_time")
     private LocalDateTime time = LocalDateTime.now();
@@ -37,15 +37,18 @@ public class CourierTrack extends BaseEntity {
     @Enumerated(value = EnumType.STRING)
     private StatusEnum status = StatusEnum.OUTSIDE;
 
+    @Column(name = "travel_distance")
+    private Double travelDistance = (double) 0;
+
     @DecimalMin(value = "-90.0")
     @DecimalMax(value = "90.0")
     @Column(name = "store_lat", columnDefinition = "decimal(10,7)")
-    private BigDecimal storeLat;
+    private Double storeLat;
 
     @DecimalMin(value = "-180.0")
     @DecimalMax(value = "180.0")
     @Column(name = "store_lng", columnDefinition = "decimal(10,7)")
-    private BigDecimal storeLng;
+    private Double storeLng;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "courier_id", referencedColumnName = "id")

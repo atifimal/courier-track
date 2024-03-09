@@ -1,16 +1,12 @@
 package com.atifimal.demo.couriertrack.domain.courier_track.model.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.atifimal.demo.couriertrack.common.model.LatLng;
+import lombok.*;
 
-import java.math.BigDecimal;
-
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CourierTrackResponse {
+public class CourierTrackResponse extends LatLng {
     private Long courierId;
-    private BigDecimal lat;
-    private BigDecimal lng;
 }
