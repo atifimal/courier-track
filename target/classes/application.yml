@@ -3,3 +3,8 @@ spring:
 
 server:
   port: 8089
+
+application:
+  constant:
+    entrance-limit: 100 # as meter
+    reentry-limit: 1 # as minute

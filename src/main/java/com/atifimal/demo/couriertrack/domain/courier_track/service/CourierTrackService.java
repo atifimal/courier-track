@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,13 @@ public class CourierTrackService {
     private final ModelMapper mapper;
     private final CourierService courierService;
 
+    @Value("${application.constant.entrance-limit}")
+    private Integer ENTRANCE_LIMIT;
+
+    @Value("${application.constant.reentry-limit}")
+    private Integer REENTRY_LIMIT;
+
+
     @PostConstruct
     private void init() {
         mapper.addMappings(new PropertyMap<CourierTrack, CourierTrackResponse>() {
@@ -59,29 +67,34 @@ public class CourierTrackService {
 
     public ResponseEntity<CourierTrackResponse> saveCourierTrack(CourierTrackRequest request) throws IOException {
         var marketStores = getMarketStores();
+        // Repeatedly needed to use lat, lng fields only. Created LatLng.class and used it instead of whole classes.
         var requestLatLng = mapper.map(request, LatLng.class);
         MarketStore enteredMarketStore = null;
 
         for (MarketStore marketStore : marketStores) {
             var storeLatLng = mapper.map(marketStore, LatLng.class);
-            if (isCoordsDiffLessThan(requestLatLng, storeLatLng, 100)) {
+            if (isCoordsDiffLessThan(requestLatLng, storeLatLng, ENTRANCE_LIMIT)) {
                 enteredMarketStore = marketStore;
                 break;
             }
         }
 
         var courierTrack = mapper.map(request, CourierTrack.class);
+        // Get last record of courier track to calculate travel distance (as kilometers)
         var courierLastRecord = repository.findFirstByCourierIdOrderByIdDesc(request.getCourierId())
                 .map(courierTrack1 -> mapper.map(courierTrack1, LatLng.class))
                 .orElse(null);
 
         courierTrack.setCourier(courierService.getCourierById(request.getCourierId()));
-        Optional.ofNullable(courierLastRecord).ifPresent(latLng -> courierTrack.setTravelDistance(coordinateDiffAsKm(latLng, requestLatLng)));
+        Optional.ofNullable(courierLastRecord).ifPresent(latLng -> courierTrack.setTravelDistance(coordinatesDiffAsKm(latLng, requestLatLng)));
+
+        // With storeLat and storeLng fields, desired to keep the store which the courier entered
+        // storeName can be used too, but lat lng information seemed more unique
         Optional.ofNullable(enteredMarketStore).ifPresent(marketStore -> {
             courierTrack.setStatus(StatusEnum.INSIDE);
             courierTrack.setStoreLat(marketStore.getLat());
             courierTrack.setStoreLng(marketStore.getLng());
-            if (isLastEntranceBiggerThan(courierTrack, 1)) {
+            if (hasBeenSinceLastEntrance(courierTrack, REENTRY_LIMIT)) {
                 var courier = courierTrack.getCourier();
                 log.info("COURIER ENTRANCE - {} (id: {}), Store: {}, Time: {}",
                         courier.getFirstName().concat(StringUtils.SPACE).concat(courier.getLastName()).trim(),
@@ -96,7 +109,7 @@ public class CourierTrackService {
 
     public ResponseEntity<Double> getTotalTravelDistance(Long courierId) {
         var totalDist = repository.findAllByCourierId(courierId).stream().mapToDouble(CourierTrack::getTravelDistance).sum();
-
+        // Java double sum issue appeared and didn't want to use sum() with JPQL. Used BigDecimal instead.
         return new ResponseEntity<>(BigDecimal.valueOf(totalDist).setScale(2, RoundingMode.HALF_EVEN).doubleValue(), HttpStatus.OK);
     }
 
@@ -113,11 +126,12 @@ public class CourierTrackService {
         }
     }
 
-    public static boolean isCoordsDiffLessThan(LatLng latLng1, LatLng latLng2, double distance) {
-        return coordinateDiffAsKm(latLng1, latLng2) <= distance / 1000;
+    public static boolean isCoordsDiffLessThan(LatLng latLng1, LatLng latLng2, double distanceAsMeter) {
+        return coordinatesDiffAsKm(latLng1, latLng2) <= distanceAsMeter / 1000;
     }
 
-    public static double coordinateDiffAsKm(LatLng latLng1, LatLng latLng2) {
+    public static double coordinatesDiffAsKm(LatLng latLng1, LatLng latLng2) {
+        // Ctrl C, Ctrl V
         int EARTH_RADIUS_KM = 6371;
         double lat1 = latLng1.getLat().doubleValue();
         double lat2 = latLng2.getLat().doubleValue();
@@ -134,7 +148,8 @@ public class CourierTrackService {
         return EARTH_RADIUS_KM * c;
     }
 
-    public boolean isLastEntranceBiggerThan(CourierTrack courierTrack, Integer minute) {
+    public boolean hasBeenSinceLastEntrance(CourierTrack courierTrack, Integer minute) {
+        // Find last entrance of courier to currently entered store and calculate difference as minutes
         var lastEntranceToStore = repository.findFirstByCourierIdAndStatusAndStoreLatAndStoreLngOrderByIdDesc(
                 courierTrack.getCourier().getId(),
                 StatusEnum.INSIDE, courierTrack.getStoreLat(),
