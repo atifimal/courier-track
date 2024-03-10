@@ -1,9 +1,9 @@
 package com.atifimal.demo.couriertrack.domain.courier_track.service;
 
+import com.atifimal.demo.couriertrack.common.model.LatLng;
 import com.atifimal.demo.couriertrack.common.model.MarketStore;
 import com.atifimal.demo.couriertrack.domain.courier.service.CourierService;
 import com.atifimal.demo.couriertrack.domain.courier_track.entity.CourierTrack;
-import com.atifimal.demo.couriertrack.common.model.LatLng;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackRequest;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.dto.CourierTrackResponse;
 import com.atifimal.demo.couriertrack.domain.courier_track.model.enums.StatusEnum;
@@ -83,7 +83,7 @@ public class CourierTrackService {
             courierTrack.setStoreLng(marketStore.getLng());
             if (isLastEntranceBiggerThan(courierTrack, 1)) {
                 var courier = courierTrack.getCourier();
-                log.info("COURIER ENTRANCE - Courier: {} (id: {}), Store: {}, Time: {}",
+                log.info("COURIER ENTRANCE - {} (id: {}), Store: {}, Time: {}",
                         courier.getFirstName().concat(StringUtils.SPACE).concat(courier.getLastName()).trim(),
                         courier.getId(),
                         marketStore.getName(),
@@ -113,17 +113,6 @@ public class CourierTrackService {
         }
     }
 
-    public boolean isLastEntranceBiggerThan(CourierTrack courierTrack, Integer minute) {
-        var lastEntranceToStore = repository.findFirstByCourierIdAndStatusAndStoreLatAndStoreLngOrderByIdDesc(
-                courierTrack.getCourier().getId(),
-                StatusEnum.INSIDE, courierTrack.getStoreLat(),
-                courierTrack.getStoreLng()
-        ).orElse(null);
-        if (lastEntranceToStore != null)
-            return minute < Duration.between(courierTrack.getTime(), lastEntranceToStore.getTime()).toMinutes();
-        return true;
-    }
-
     public static boolean isCoordsDiffLessThan(LatLng latLng1, LatLng latLng2, double distance) {
         return coordinateDiffAsKm(latLng1, latLng2) <= distance / 1000;
     }
@@ -143,5 +132,18 @@ public class CourierTrackService {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return EARTH_RADIUS_KM * c;
+    }
+
+    public boolean isLastEntranceBiggerThan(CourierTrack courierTrack, Integer minute) {
+        var lastEntranceToStore = repository.findFirstByCourierIdAndStatusAndStoreLatAndStoreLngOrderByIdDesc(
+                courierTrack.getCourier().getId(),
+                StatusEnum.INSIDE, courierTrack.getStoreLat(),
+                courierTrack.getStoreLng()
+        ).orElse(null);
+        if (lastEntranceToStore != null) {
+            return minute <= Math.abs(Duration.between(courierTrack.getTime(), lastEntranceToStore.getTime()).toMinutes());
+        }
+
+        return true;
     }
 }

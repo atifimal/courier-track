@@ -17,8 +17,9 @@ public class CourierService {
     @PostConstruct
     public void init() {
         repository.saveAll(List.of(
-                        new Courier("Mehmet", "Demir", "+905325322222", VehicleTypeEnum.MOTORCYCLE),
-                        new Courier("Zeynep", "Kaya", "+905325322222", VehicleTypeEnum.CAR)
+                        new Courier("Mehmet", "Demir", "+905325321111", VehicleTypeEnum.MOTORCYCLE),
+                        new Courier("Zeynep", "Kaya", "+905325322222", VehicleTypeEnum.MOTORCYCLE),
+                        new Courier("Omer", "Yilmaz", "+905325323333", VehicleTypeEnum.CAR)
                 )
         );
     }
