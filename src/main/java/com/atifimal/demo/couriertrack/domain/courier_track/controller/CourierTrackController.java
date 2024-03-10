@@ -17,9 +17,9 @@ import java.util.List;
 public class CourierTrackController {
     private final CourierTrackService service;
 
-    @GetMapping
-    private ResponseEntity<List<CourierTrackResponse>> getCourierTracks() throws IOException {
-        return service.getCourierTracks();
+    @GetMapping("/{courierId}")
+    private ResponseEntity<List<CourierTrackResponse>> getCourierTracks(@PathVariable Long courierId) throws IOException {
+        return service.getCourierTracks(courierId);
     }
 
     @GetMapping("total-distance/{courierId}")

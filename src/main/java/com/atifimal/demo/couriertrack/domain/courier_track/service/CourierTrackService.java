@@ -58,8 +58,8 @@ public class CourierTrackService {
         });
     }
 
-    public ResponseEntity<List<CourierTrackResponse>> getCourierTracks() {
-        return new ResponseEntity<>(repository.findAll().stream()
+    public ResponseEntity<List<CourierTrackResponse>> getCourierTracks(Long courierId) {
+        return new ResponseEntity<>(repository.findAllByCourierId(courierId).stream()
                 .map(courierTrack -> mapper.map(courierTrack, CourierTrackResponse.class))
                 .toList(),
                 HttpStatus.OK);
@@ -131,7 +131,7 @@ public class CourierTrackService {
     }
 
     public static double coordinatesDiffAsKm(LatLng latLng1, LatLng latLng2) {
-        // Ctrl C, Ctrl V
+        // Ctrl C, Ctrl V (almost)
         int EARTH_RADIUS_KM = 6371;
         double lat1 = latLng1.getLat().doubleValue();
         double lat2 = latLng2.getLat().doubleValue();

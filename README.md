@@ -41,6 +41,8 @@ Red star show market store.
 
 [src/main/resources/static/test-03.sh](https://github.com/atifimal/courier-track/blob/6381100a9c066e31f4105622737e0a463e819063/src/main/resources/static/test-03.sh)
 
+> This test lasts approx. 1 min and 3 seconds.
+
 Same road with Test 2, the only difference is courier's waiting 61 seconds between `Point C` and `Point D`.
 
 (To test reentering same store after more than 1 minute)
